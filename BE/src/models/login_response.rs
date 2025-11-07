@@ -1,8 +1,9 @@
 use uuid::Uuid;
 use crate::entity::users::Role;
 use serde::Serialize;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct LoginResponse {
     pub uuid: Uuid,
     pub access_token: String,

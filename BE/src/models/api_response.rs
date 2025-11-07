@@ -1,15 +1,16 @@
 use serde::Serialize;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json};
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
-pub struct ApiResponse<T: Serialize> {
+#[derive(Serialize, ToSchema)]
+pub struct ApiResponse<T: Serialize + ToSchema> {
     pub status: i16,
     pub message: String,
     pub data: Option<T>,
 }
 
-impl<T: Serialize> ApiResponse<T> {
+impl<T: Serialize + ToSchema> ApiResponse<T> {
     pub fn ok(message: &str, data: T) -> (StatusCode, Json<ApiResponse<T>>) {
         (
             StatusCode::OK,
