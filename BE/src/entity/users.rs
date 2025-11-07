@@ -1,3 +1,4 @@
+use std::fmt;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -6,6 +7,7 @@ use sqlx::FromRow;
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct User {
     pub id: Uuid,
+    pub password: String,
     pub image_url: String,
     pub first_name: String,
     pub last_name: String,
@@ -23,4 +25,14 @@ pub enum Role {
     Teacher,
     Student,
     Admin,
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Role::Teacher => write!(f, "Teacher"),
+            Role::Student => write!(f, "Student"),
+            Role::Admin => write!(f, "Admin"),
+        }
+    }
 }

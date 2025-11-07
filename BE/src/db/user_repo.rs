@@ -1,6 +1,7 @@
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
-use crate::models::users::User;
+use bcrypt::{verify, hash, DEFAULT_COST};
+use crate::entity::users::User;
 
 pub async fn get_all(db: &Pool<Postgres>) -> sqlx::Result<Vec<User>> {
     sqlx::query_as::<_, User>("SELECT * FROM users ORDER BY created_at DESC")
@@ -15,16 +16,24 @@ pub async fn get_user_by_id(db: &Pool<Postgres>, id: Uuid) -> sqlx::Result<Optio
         .await
 }
 
-pub async fn create(db: &Pool<Postgres>, user: User) -> sqlx::Result<User> {
+pub async fn get_user_by_email(db: &Pool<Postgres>, email: &str) -> sqlx::Result<Option<User>> {
+    sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
+        .bind(email)
+        .fetch_optional(db)
+        .await
+}
+
+pub async fn register(db: &Pool<Postgres>, user: User) -> sqlx::Result<User> {
     let id = Uuid::new_v4();
 
-    // Use RETURNING * to get the created user back as `User`.
+    let hashed = hash(user.password, DEFAULT_COST).unwrap();
     let created = sqlx::query_as::<_, User>(
-        "INSERT INTO users (id, first_name, last_name, email, date_of_birth, phone_number, class, role, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "INSERT INTO users (id, password, first_name, last_name, email, date_of_birth, phone_number, class, role, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *"
     )
         .bind(id)
+        .bind(hashed)
         .bind(user.first_name)
         .bind(user.last_name)
         .bind(user.email)
