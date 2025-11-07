@@ -77,7 +77,8 @@ pub async fn upload_avatar(
 
                     match upload_to_cloudinary(bytes.to_vec(), &file_name).await {
                         Ok(url) => {
-                            if let Err(_) = save_image_url(&db, &url, &user.id.to_string()).await {
+                            if let Err(e) = save_image_url(&db, &url, user.id).await {
+                                println!("Error saving image: {:?}", e);
                                 return ApiResponse::error(
                                     StatusCode::INTERNAL_SERVER_ERROR,
                                     "Không lưu được URL ảnh",
@@ -89,7 +90,8 @@ pub async fn upload_avatar(
                                 json!({ "url": url }),
                             );
                         }
-                        Err(_) => {
+                        Err(e) => {
+                            println!("{}", e);
                             return ApiResponse::error(
                                 StatusCode::INTERNAL_SERVER_ERROR,
                                 "Lỗi upload Cloudinary",

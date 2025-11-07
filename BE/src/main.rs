@@ -62,6 +62,9 @@ impl utoipa::Modify for SecurityAddon {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+	// Load .env file if exists
+	dotenvy::dotenv().ok();
+	
 	tracing_subscriber::fmt::init();
 
 	let cfg = Config::from_env();

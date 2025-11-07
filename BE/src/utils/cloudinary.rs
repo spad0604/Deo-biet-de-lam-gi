@@ -22,7 +22,7 @@ pub async fn upload_to_cloudinary(file_bytes:Vec<u8>, file_name: &str) -> Result
 
     let form = multipart::Form::new()
         .part("file", part)
-        .text("upload_preset", "unsigned_preset");
+        .text("upload_preset", "face_tracking");
 
     let client = reqwest::Client::new();
 

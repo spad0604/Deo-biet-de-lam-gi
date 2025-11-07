@@ -65,9 +65,9 @@ pub async fn register(State(db): State<PgPool>, Json(req): Json<RegisterRequest>
     tag = "Authentication"
 )]
 pub async fn login(State(db): State<PgPool>, Json(req): Json<LoginRequest>) -> (StatusCode, Json<ApiResponse<LoginResponse>>) {
-    const SECRET: &str = "your-secret-key";
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "mysecret".to_string());
     
-    match login_user(&db, &req.email, &req.password, SECRET).await {
+    match login_user(&db, &req.email, &req.password, &secret).await {
         Ok(response) => ApiResponse::ok("Login successful", response),
         Err(_) => ApiResponse::error(StatusCode::UNAUTHORIZED, "Invalid credentials"),
     }

@@ -23,11 +23,11 @@ pub async fn get_user_by_email(db: &Pool<Postgres>, email: &str) -> sqlx::Result
         .await
 }
 
-pub async fn save_image_url(db: &Pool<Postgres>, image_url: &str, id: &str) -> sqlx::Result<()> {
+pub async fn save_image_url(db: &Pool<Postgres>, image_url: &str, id: Uuid) -> sqlx::Result<()> {
     sqlx::query("UPDATE users SET image_url = $1 WHERE id = $2")
         .bind(image_url)
         .bind(id)
-        .fetch_one(db)
+        .execute(db)
         .await?;
 
     Ok(())
