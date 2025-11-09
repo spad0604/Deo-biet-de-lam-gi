@@ -12,7 +12,7 @@ pub struct Claims {
 
 pub fn create_jwt(id: &str, role: &str, email: &str, secret: &str) -> String {
     let expiration = Utc::now()
-        .checked_add_signed(Duration::minutes(15))
+        .checked_add_signed(Duration::minutes(60))
         .expect("invalid timestamp")
         .timestamp() as usize;
 

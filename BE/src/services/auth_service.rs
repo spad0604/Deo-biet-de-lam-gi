@@ -37,14 +37,15 @@ pub async fn login_user(db: &Pool<Postgres>, email: &str, password: &str, secret
         },
 
         Role::Student => {
-            let student_opt = get_student_by_id(db, record.user_id).await?;
-            let student = student_opt.ok_or_else(|| anyhow!("Student record not found user"))?;
+            let student_option = get_student_by_id(db, record.user_id).await?;
+
+            let student = student_option.ok_or_else(|| anyhow!("Student record not found user"))?;
 
             (
                 student.user.image_url,
                 student.user.first_name,
                 student.user.last_name,
-                Some(student.class_id),
+                student.class_id
             )
         },
         Role::Admin => {

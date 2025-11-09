@@ -9,5 +9,5 @@ pub struct Student {
     pub id: Uuid,
     #[sqlx(flatten)]
     pub user: User,
-    pub class_id: Uuid,
+    pub class_id: Option<Uuid>,
 }

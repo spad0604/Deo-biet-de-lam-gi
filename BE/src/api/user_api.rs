@@ -9,6 +9,7 @@ use axum::{
 use sqlx::PgPool;
 use serde_json::json;
 use crate::db::auth_user_repo::get_user_by_email as get_auth_user_by_email;
+use crate::db::classes_repo::find_class_by_id;
 use crate::db::teacher_student_repo::{get_teacher_by_id, get_student_by_id, save_teacher_image_url, save_student_image_url};
 use crate::entity::users::Role;
 use crate::security::middle_ware::Auth;
@@ -42,29 +43,50 @@ pub async fn get_me(State(db): State<PgPool>, Auth(claims): Auth) -> (StatusCode
             let result = match role {
                 Role::Teacher => {
                     match get_teacher_by_id(&db, auth_user.user_id).await {
-                        Ok(Some(teacher)) => Some(json!({
+                        Ok(Some(teacher)) =>{
+                            let mut class_name : Option<String> = None;
+
+                            if let Some(class_id) = teacher.homeroom_class_id {
+                                let class_id_str = class_id.to_string();
+
+                                if let Ok(Some(name)) = find_class_by_id(&db, &class_id_str).await {
+                                    class_name = Some(name);
+                                }
+                            }
+                            Some(json!({
                             "id": teacher.id,
                             "first_name": teacher.user.first_name,
                             "last_name": teacher.user.last_name,
                             "email": auth_user.email,
                             "role": auth_user.role,
                             "image_url": teacher.user.image_url,
-                            "homeroom_class_id": teacher.homeroom_class_id
-                        })),
+                            "class_name": class_name
+                        }))}
                         _ => None
                     }
                 },
                 Role::Student => {
                     match get_student_by_id(&db, auth_user.user_id).await {
-                        Ok(Some(student)) => Some(json!({
+                        Ok(Some(student)) => {
+                            let mut class_name : Option<String> = None;
+
+                            if let Some(class_id) = student.class_id {
+                                let class_id_str = class_id.to_string();
+
+                                if let Ok(Some(name)) = find_class_by_id(&db, &class_id_str).await {
+                                    class_name = Some(name);
+                                }
+                            }
+
+                            Some(json!({
                             "id": student.id,
                             "first_name": student.user.first_name,
                             "last_name": student.user.last_name,
                             "email": auth_user.email,
                             "role": auth_user.role,
                             "image_url": student.user.image_url,
-                            "class_id": student.class_id
-                        })),
+                            "class_name": class_name
+                        }))},
                         _ => None
                     }
                 },

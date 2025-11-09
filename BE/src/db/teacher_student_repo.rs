@@ -55,7 +55,7 @@ pub async fn get_student_by_id(db: &Pool<Postgres>, id: Uuid) -> sqlx::Result<Op
             phone_number: e.phone_number,
             image_url: e.image_url,
         },
-        class_id: e.class_id,
+        class_id: Some(e.class_id),
     }))
 }
 

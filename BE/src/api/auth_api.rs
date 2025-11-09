@@ -62,7 +62,8 @@ pub async fn register(State(db): State<PgPool>, Json(req): Json<RegisterRequest>
                         homeroom_class_id: None,
                     };
 
-                    if let Err(_) = create_teacher(&db, teacher).await {
+                    if let Err(e) = create_teacher(&db, teacher).await {
+                        println!("{}", e);
                         return ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create teacher record");
                     }
                 }
@@ -109,6 +110,9 @@ pub async fn login(State(db): State<PgPool>, Json(req): Json<LoginRequest>) -> (
     
     match login_user(&db, &req.email, &req.password, &secret).await {
         Ok(response) => ApiResponse::ok("Login successful", response),
-        Err(_) => ApiResponse::error(StatusCode::UNAUTHORIZED, "Invalid credentials"),
+        Err(e) => {
+            println!("{}", e);
+            ApiResponse::error(StatusCode::UNAUTHORIZED, "Invalid credentials")
+        },
     }
 }
