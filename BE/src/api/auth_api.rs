@@ -8,7 +8,8 @@ use axum::{
 
 use uuid::Uuid;
 use sqlx::PgPool;
-use crate::db::user_repo::{register as register_user};
+use crate::db::auth_user_repo::{register as register_auth_user};
+use crate::db::teacher_student_repo::{create_teacher, create_student};
 use crate::services::auth_service::login_user;
 use crate::models::register_request::{RegisterRequest, LoginRequest};
 use crate::models::login_response::LoginResponse;
@@ -32,25 +33,64 @@ pub fn routes() -> Router<PgPool> {
     tag = "Authentication"
 )]
 pub async fn register(State(db): State<PgPool>, Json(req): Json<RegisterRequest>) -> (StatusCode, Json<ApiResponse<()>>) {
-    use crate::entity::users::User;
+    use crate::entity::auth_user::AuthUser;
 
-    let user = User {
+    let user_id = Uuid::new_v4();
+    let auth_user = AuthUser {
         id: Uuid::new_v4(),
+        user_id,
+        email: req.email.clone(),
         password: req.password,
-        image_url: "".to_string(), 
-        first_name: req.first_name,
-        last_name: req.last_name,
-        date_of_birth: req.date_of_birth,
-        email: req.email,
-        phone_number: req.phone_number,
-        class: req.class,
-        role: req.role,
+        role: req.role.to_string(),
         created_at: Utc::now(),
     };
 
-    match register_user(&db, user).await {
-        Ok(_) => ApiResponse::ok("User registered successfully", ()),
-        Err(_) => ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to register user"),
+    match register_auth_user(&db, auth_user).await {
+        Ok(_) => {
+            use crate::entity::user_entities::{TeacherEntity, StudentEntity};
+            use crate::entity::users::Role;
+
+            match req.role {
+                Role::Teacher => {
+                    let teacher = TeacherEntity {
+                        id: user_id,
+                        first_name: req.first_name.clone(),
+                        last_name: req.last_name.clone(),
+                        date_of_birth: req.date_of_birth,
+                        phone_number: req.phone_number.clone(),
+                        image_url: "".to_string(),
+                        homeroom_class_id: None,
+                    };
+
+                    if let Err(_) = create_teacher(&db, teacher).await {
+                        return ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create teacher record");
+                    }
+                }
+                Role::Student => {
+                    let student = StudentEntity {
+                        id: user_id,
+                        first_name: req.first_name.clone(),
+                        last_name: req.last_name.clone(),
+                        date_of_birth: req.date_of_birth,
+                        phone_number: req.phone_number.clone(),
+                        image_url: "".to_string(),
+                        class_id: Uuid::new_v4(), 
+                    };
+
+                    if let Err(_) = create_student(&db, student).await {
+                        return ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create student record");
+                    }
+                }
+                Role::Admin => {
+                }
+            }
+
+            ApiResponse::ok("User registered successfully", ())
+        },
+        Err(e) => {
+            println!("{}", e);
+            ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to register user")
+        },
     }
 }
 

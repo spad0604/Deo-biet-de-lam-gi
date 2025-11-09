@@ -6,10 +6,11 @@ use chrono::{Utc, Duration};
 pub struct Claims {
     pub sub: String,
     pub exp: usize,
-    pub role: String
+    pub role: String,
+    pub email: String
 }
 
-pub fn create_jwt(id: &str, role: &str, secret: &str) -> String {
+pub fn create_jwt(id: &str, role: &str, email: &str, secret: &str) -> String {
     let expiration = Utc::now()
         .checked_add_signed(Duration::minutes(15))
         .expect("invalid timestamp")
@@ -19,6 +20,7 @@ pub fn create_jwt(id: &str, role: &str, secret: &str) -> String {
         sub: id.to_owned(),
         exp: expiration,
         role: role.to_owned(),
+        email: email.to_owned(),
     };
 
     encode(

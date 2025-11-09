@@ -8,7 +8,9 @@ use axum::{
 
 use sqlx::PgPool;
 use serde_json::json;
-use crate::db::user_repo::{get_user_by_email, save_image_url};
+use crate::db::auth_user_repo::get_user_by_email as get_auth_user_by_email;
+use crate::db::teacher_student_repo::{get_teacher_by_id, get_student_by_id, save_teacher_image_url, save_student_image_url};
+use crate::entity::users::Role;
 use crate::security::middle_ware::Auth;
 use crate::models::api_response::ApiResponse;
 use crate::utils::cloudinary::upload_to_cloudinary;
@@ -33,16 +35,50 @@ pub fn routes() -> Router<PgPool> {
     tag = "User"
 )]
 pub async fn get_me(State(db): State<PgPool>, Auth(claims): Auth) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
-    match get_user_by_email(&db, &claims.sub).await {
-        Ok(Some(user)) => ApiResponse::ok("User data retrieved", json!({
-            "id": user.id,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "email": user.email,
-            "role": user.role,
-            "image_url": user.image_url,
-            "class": user.class
-        })),
+    match get_auth_user_by_email(&db, &claims.email).await {
+        Ok(Some(auth_user)) => {
+            let role = Role::from(auth_user.role.clone());
+            
+            let result = match role {
+                Role::Teacher => {
+                    match get_teacher_by_id(&db, auth_user.user_id).await {
+                        Ok(Some(teacher)) => Some(json!({
+                            "id": teacher.id,
+                            "first_name": teacher.user.first_name,
+                            "last_name": teacher.user.last_name,
+                            "email": auth_user.email,
+                            "role": auth_user.role,
+                            "image_url": teacher.user.image_url,
+                            "homeroom_class_id": teacher.homeroom_class_id
+                        })),
+                        _ => None
+                    }
+                },
+                Role::Student => {
+                    match get_student_by_id(&db, auth_user.user_id).await {
+                        Ok(Some(student)) => Some(json!({
+                            "id": student.id,
+                            "first_name": student.user.first_name,
+                            "last_name": student.user.last_name,
+                            "email": auth_user.email,
+                            "role": auth_user.role,
+                            "image_url": student.user.image_url,
+                            "class_id": student.class_id
+                        })),
+                        _ => None
+                    }
+                },
+                Role::Admin => Some(json!({
+                    "email": auth_user.email,
+                    "role": auth_user.role
+                }))
+            };
+            
+            match result {
+                Some(data) => ApiResponse::ok("User data retrieved", data),
+                None => ApiResponse::error(StatusCode::NOT_FOUND, "User not found")
+            }
+        },
         Ok(None) => ApiResponse::error(StatusCode::NOT_FOUND, "User not found"),
         Err(_) => ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
     }
@@ -67,17 +103,24 @@ pub async fn upload_avatar(
     Auth(claims): Auth,
     mut image: Multipart,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
-    match get_user_by_email(&db, &claims.sub).await {
-        Ok(Some(user)) => {
+    match get_auth_user_by_email(&db, &claims.email).await {
+        Ok(Some(auth_user)) => {
+            let role = Role::from(auth_user.role.clone());
+            
             while let Some(field) = image.next_field().await.unwrap_or(None) {
                 if let Some(file_name_ref) = field.file_name() {
                     let file_name = file_name_ref.to_string();
-
                     let bytes = field.bytes().await.unwrap_or_default();
 
                     match upload_to_cloudinary(bytes.to_vec(), &file_name).await {
                         Ok(url) => {
-                            if let Err(e) = save_image_url(&db, &url, user.id).await {
+                            let save_result = match role {
+                                Role::Teacher => save_teacher_image_url(&db, &url, auth_user.user_id).await,
+                                Role::Student => save_student_image_url(&db, &url, auth_user.user_id).await,
+                                Role::Admin => Ok(()) 
+                            };
+                            
+                            if let Err(e) = save_result {
                                 println!("Error saving image: {:?}", e);
                                 return ApiResponse::error(
                                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -101,9 +144,9 @@ pub async fn upload_avatar(
                 }
             }
 
-            ApiResponse::error(StatusCode::BAD_REQUEST, "Thiếu file upload")
-        }
-        Ok(None) => ApiResponse::error(StatusCode::NOT_FOUND, "User không tồn tại"),
-        Err(_) => ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Lỗi truy vấn database"),
+            return ApiResponse::error(StatusCode::BAD_REQUEST, "Thiếu file upload");
+        },
+        Ok(None) => return ApiResponse::error(StatusCode::NOT_FOUND, "User không tồn tại"),
+        Err(_) => return ApiResponse::error(StatusCode::INTERNAL_SERVER_ERROR, "Lỗi truy vấn database"),
     }
 }

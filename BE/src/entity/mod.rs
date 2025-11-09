@@ -1,1 +1,9 @@
 pub mod users;
+pub mod auth_user;
+pub mod user_entity;
+pub mod user_entities;
+pub mod subject;
+pub mod class;
+pub mod teacher;
+pub mod student;
+pub mod teacher_subject;

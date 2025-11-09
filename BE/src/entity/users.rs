@@ -1,23 +1,16 @@
 use std::fmt;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use sqlx::FromRow;
 use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct User {
-    pub id: Uuid,
-    pub password: String,
-    pub image_url: String,
     pub first_name: String,
     pub last_name: String,
     pub date_of_birth: DateTime<Utc>,
-    pub email: String,
     pub phone_number: String,
-    pub class: String,
-    pub role: Role,
-    pub created_at: DateTime<Utc>,
+    pub image_url: String,
+    
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, ToSchema)]
@@ -26,6 +19,17 @@ pub enum Role {
     Teacher,
     Student,
     Admin,
+}
+
+impl From<String> for Role {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Teacher" => Role::Teacher,
+            "Student" => Role::Student,
+            "Admin" => Role::Admin,
+            _ => Role::Student, 
+        }
+    }
 }
 
 impl fmt::Display for Role {
