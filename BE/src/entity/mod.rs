@@ -7,3 +7,4 @@ pub mod class;
 pub mod teacher;
 pub mod student;
 pub mod teacher_subject;
+pub mod face_vector;

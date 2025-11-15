@@ -32,7 +32,9 @@ def sync_database_on_startup():
             headers={"Authorization": f"Bearer {INTERNAL_API_TOKEN}"}
         )
         response.raise_for_status()
-        data = response.json()
+        response_data = response.json()
+        
+        data = response_data.get('data', []) if isinstance(response_data, dict) else response_data
 
         if not data:
             print("CSDL vector rỗng.")

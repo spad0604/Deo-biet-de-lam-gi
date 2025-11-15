@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 use sqlx::PgPool;
 use tracing_subscriber;
 use axum::{Router, serve};
-use crate::api::{user_api, auth_api};
+use crate::api::{user_api, auth_api, internal_api};
 use crate::config::Config;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
 	let app = Router::new()
 		.merge(user_api::routes())
 		.merge(auth_api::routes())
+		.merge(internal_api::routes())
 		.merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
 		.with_state(pool.clone());
 

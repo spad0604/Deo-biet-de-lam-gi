@@ -11,10 +11,12 @@ use serde_json::json;
 use crate::db::auth_user_repo::get_user_by_email as get_auth_user_by_email;
 use crate::db::classes_repo::find_class_by_id;
 use crate::db::teacher_student_repo::{get_teacher_by_id, get_student_by_id, save_teacher_image_url, save_student_image_url};
+use crate::db::face_vector_repo::upsert_face_vector;
 use crate::entity::users::Role;
 use crate::security::middle_ware::Auth;
 use crate::models::api_response::ApiResponse;
 use crate::utils::cloudinary::upload_to_cloudinary;
+use crate::utils::python_api::extract_embedding_from_image;
 
 pub fn routes() -> Router<PgPool> {
     Router::new()
@@ -133,6 +135,7 @@ pub async fn upload_avatar(
                 if let Some(file_name_ref) = field.file_name() {
                     let file_name = file_name_ref.to_string();
                     let bytes = field.bytes().await.unwrap_or_default();
+                    let bytes_clone = bytes.to_vec();
 
                     match upload_to_cloudinary(bytes.to_vec(), &file_name).await {
                         Ok(url) => {
@@ -148,6 +151,24 @@ pub async fn upload_avatar(
                                     StatusCode::INTERNAL_SERVER_ERROR,
                                     "Không lưu được URL ảnh",
                                 );
+                            }
+
+                            if matches!(role, Role::Student) {
+                                match extract_embedding_from_image(bytes_clone, &file_name).await {
+                                    Ok(embedding) => {
+                                        match upsert_face_vector(&db, auth_user.user_id, embedding).await {
+                                            Ok(_) => {
+                                                println!("Đã lưu face vector cho student {}", auth_user.user_id);
+                                            }
+                                            Err(e) => {
+                                                println!("Lỗi khi lưu face vector: {:?}", e);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("Lỗi khi extract embedding từ Python API: {}", e);
+                                    }
+                                }
                             }
 
                             return ApiResponse::ok(
